@@ -18,7 +18,7 @@ export async function appRoutes(app: FastifyInstance) {
 
 		const { title, weekDays } = createHabitBody.parse(habit);
 
-		const today = dayjs().startOf('day').toDate()
+		const today = dayjs().startOf('day').toDate() // faz com que as horas e os segundos não importem 
 
 		await prisma.habit.create({
 			data: {
@@ -35,5 +35,30 @@ export async function appRoutes(app: FastifyInstance) {
 		})
 	})
 
+	app.get('/day', async (request) => {
+		const createDayParam = z.object({
+			date: z.coerce.date() //transforma uma string de date em Date
+		})
 
+		const { date } = createDayParam.parse(request.body);
+
+		const weekDay = dayjs(date).get('day');
+
+		const possibleHabits = await prisma.habit.findMany({
+			where: {
+				created_at: {//Para não mostrar hábitos posteriores à data do dia usamos o menor ou igual a "lte" do prisma
+					lte: date //Só posso mostrar hábitos que foram criados até a data pedida, nunca as do futuro
+				},
+				weekDays: {
+					some: {
+						week_day: weekDay
+					}
+				} 						
+			}
+		})
+
+		return(
+				possibleHabits
+		)
+	})
 }
